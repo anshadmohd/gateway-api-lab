@@ -1,0 +1,14 @@
+{
+  "name": "gateway-lab-shop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Demo app for the Gateway API lab. Shows which backend answered and what the gateway changed.",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

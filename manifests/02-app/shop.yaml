@@ -1,0 +1,135 @@
+# The same image runs twice. Only the environment variables differ:
+#   shop-v1  -> "stable", 2 pods (weights are per Service, so both pods share v1's share)
+#   shop-v2  -> "canary", 1 pod
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shop-v1
+  labels:
+    app: shop
+    version: v1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: shop
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: shop
+        version: v1
+    spec:
+      containers:
+        - name: shop
+          image: gateway-lab/shop:1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3000
+          env:
+            - name: APP_VERSION
+              value: v1
+            - name: APP_LABEL
+              value: stable
+            - name: APP_COLOR
+              value: "#2563eb"
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shop-v1
+  labels:
+    app: shop
+    version: v1
+spec:
+  selector:
+    app: shop
+    version: v1
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shop-v2
+  labels:
+    app: shop
+    version: v2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shop
+      version: v2
+  template:
+    metadata:
+      labels:
+        app: shop
+        version: v2
+    spec:
+      containers:
+        - name: shop
+          image: gateway-lab/shop:1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3000
+          env:
+            - name: APP_VERSION
+              value: v2
+            - name: APP_LABEL
+              value: canary
+            - name: APP_COLOR
+              value: "#f59e0b"
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shop-v2
+  labels:
+    app: shop
+    version: v2
+spec:
+  selector:
+    app: shop
+    version: v2
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

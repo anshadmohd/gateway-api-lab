@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <title>Gateway API Lab</title>
+  <style>
+    :root {
+      --accent: #2563eb;
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --ink: #0f172a;
+      --muted: #64748b;
+      --line: #e2e8f0;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0b1120;
+        --card: #131c31;
+        --ink: #e2e8f0;
+        --muted: #94a3b8;
+        --line: #26344f;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+    }
+    main { max-width: 1000px; margin: 0 auto; padding: 32px 20px 48px; }
+    h1 { margin: 0; font-size: 1.7rem; letter-spacing: -0.01em; }
+    .intro { margin: 6px 0 0; color: var(--muted); }
+
+    .hero {
+      margin-top: 24px;
+      padding: 28px;
+      border-radius: 18px;
+      color: #fff;
+      background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #000));
+      box-shadow: 0 12px 32px -14px var(--accent);
+      transition: background 0.4s ease;
+    }
+    .hero .eyebrow { opacity: 0.85; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.1em; }
+    .hero .big { font-size: 2.6rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; margin-top: 4px; }
+    .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+    .chip { background: rgba(255, 255, 255, 0.2); border-radius: 999px; padding: 4px 12px; font-size: 0.9rem; }
+
+    .grid { display: grid; gap: 16px; margin-top: 16px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; }
+    .card h2 {
+      margin: 0 0 10px;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      font-weight: 700;
+    }
+    .route { font-size: 1.3rem; font-weight: 700; }
+    .muted { color: var(--muted); font-size: 0.9rem; margin: 8px 0 0; }
+    code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.9rem; }
+    .flow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .flow .arrow { color: var(--muted); }
+
+    ul.hdrs { list-style: none; margin: 0; padding: 0; font-size: 0.85rem; }
+    ul.hdrs li {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 5px 0;
+      border-bottom: 1px dashed var(--line);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      word-break: break-all;
+    }
+    ul.hdrs li span:first-child { color: var(--muted); flex: 0 0 auto; }
+
+    .buttons { display: flex; gap: 10px; flex-wrap: wrap; }
+    button {
+      font: inherit;
+      font-weight: 600;
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 14px;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+    }
+    button.secondary { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+    button:disabled { opacity: 0.5; cursor: wait; }
+
+    .bar { display: grid; grid-template-columns: 90px 1fr 110px; gap: 10px; align-items: center; margin: 10px 0; font-size: 0.95rem; }
+    .track { background: var(--line); border-radius: 999px; height: 14px; overflow: hidden; }
+    .fill { height: 100%; border-radius: 999px; background: var(--c, var(--accent)); transition: width 0.25s ease; }
+    .status { margin-top: 12px; min-height: 1.5em; }
+
+    .card.wide { grid-column: 1 / -1; }
+
+    footer { margin-top: 24px; color: var(--muted); font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Gateway API Lab</h1>
+    <p class="intro">Every request on this page passed through a Gateway and an HTTPRoute before a pod answered it.</p>
+  </header>
+
+  <section class="hero" id="hero">
+    <div class="eyebrow">Served by</div>
+    <div class="big" id="version">Waiting for the first response…</div>
+    <div class="chips">
+      <span class="chip" id="label">—</span>
+      <span class="chip mono" id="pod">pod: —</span>
+      <span class="chip mono" id="ns">namespace: —</span>
+    </div>
+  </section>
+
+  <div class="grid">
+    <section class="card">
+      <h2>Route that matched</h2>
+      <div class="route" id="route">—</div>
+      <p class="muted" id="routeDesc"></p>
+    </section>
+
+    <section class="card">
+      <h2>Path: browser asked for → backend received</h2>
+      <div class="flow mono">
+        <code id="sentPath">—</code>
+        <span class="arrow">→</span>
+        <code id="gotPath">—</code>
+      </div>
+      <p class="muted">When these differ, a gateway rewrote the path before the app saw it.</p>
+    </section>
+
+    <section class="card">
+      <h2>Headers the backend received</h2>
+      <ul class="hdrs" id="hdrs"></ul>
+      <p class="muted">Includes headers added by the gateway (<code>x-forwarded-*</code>, <code>x-lab-route</code>).</p>
+    </section>
+
+    <section class="card wide">
+      <h2>Try it</h2>
+      <div class="buttons">
+        <button id="one">Send 1 request</button>
+        <button id="many">Send 50 requests</button>
+        <button id="canary" class="secondary">Send 50 with x-canary: true</button>
+        <button id="reset" class="secondary">Reset</button>
+      </div>
+      <div id="bars"></div>
+      <p class="muted status" id="status"></p>
+    </section>
+  </div>
+
+  <footer>
+    Reload the page, or send several requests, to see the same Service spread across pods.
+  </footer>
+</main>
+
+<script>
+  const ROUTES = {
+    basic: 'HTTPRoute "shop": every request to shop.localhost goes to the shop-v1 Service.',
+    rewrite: 'HTTPRoute "shop-legacy": /legacy is rewritten to / before it reaches shop-v1.',
+    canary: 'HTTPRoute "shop": a request with header x-canary: true is sent to shop-v2.',
+    weighted: 'HTTPRoute "shop": default traffic is split 80% shop-v1 and 20% shop-v2.',
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  // Requests are made relative to the page, so /legacy/ calls /legacy/api/whoami.
+  const base = location.pathname.endsWith('/') ? location.pathname : location.pathname + '/';
+
+  const tallies = new Map(); // version -> { count, color }
+  const pods = new Set();
+  let busy = false;
+
+  function el(tag, attrs = {}, ...children) {
+    const node = document.createElement(tag);
+    for (const [key, value] of Object.entries(attrs)) {
+      if (key === 'text') node.textContent = value;
+      else if (key === 'style') node.style.cssText = value;
+      else node.setAttribute(key, value);
+    }
+    node.append(...children);
+    return node;
+  }
+
+  async function ask({ canary = false } = {}) {
+    const url = new URL('api/whoami', location.origin + base);
+    const res = await fetch(url, {
+      cache: 'no-store',
+      headers: canary ? { 'x-canary': 'true' } : {},
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status} from ${url.pathname}`);
+    return { sentPath: url.pathname, data: await res.json() };
+  }
+
+  function showDetails({ sentPath, data }) {
+    $('hero').style.setProperty('--accent', data.color);
+    $('version').textContent = `Shop ${data.version}`;
+    $('label').textContent = data.label;
+    $('pod').textContent = `pod: ${data.pod}`;
+    $('ns').textContent = `namespace: ${data.namespace}`;
+
+    const route = data.headers['x-lab-route'];
+    $('route').textContent = route ?? 'none';
+    $('routeDesc').textContent = route
+      ? (ROUTES[route] ?? `Custom route: ${route}`)
+      : 'No x-lab-route header: this request did not pass through a lab HTTPRoute.';
+
+    $('sentPath').textContent = sentPath;
+    $('gotPath').textContent = data.path;
+
+    const list = $('hdrs');
+    list.replaceChildren();
+    const keys = Object.keys(data.headers)
+      .filter((k) => /^(x-|host$|forwarded$|via$)/.test(k))
+      .sort();
+    if (keys.length === 0) {
+      list.append(el('li', {}, el('span', { text: 'none' })));
+    }
+    for (const key of keys) {
+      list.append(el('li', {}, el('span', { text: key }), el('span', { text: String(data.headers[key]) })));
+    }
+  }
+
+  function record(result) {
+    showDetails(result);
+    const { version, color, pod } = result.data;
+    const entry = tallies.get(version) ?? { count: 0, color };
+    entry.count += 1;
+    tallies.set(version, entry);
+    pods.add(pod);
+  }
+
+  function renderBars() {
+    const total = [...tallies.values()].reduce((sum, t) => sum + t.count, 0);
+    const box = $('bars');
+    box.replaceChildren();
+    for (const [version, t] of [...tallies].sort(([a], [b]) => a.localeCompare(b))) {
+      const pct = total ? Math.round((t.count / total) * 100) : 0;
+      box.append(
+        el('div', { class: 'bar' },
+          el('span', { text: `shop ${version}` }),
+          el('div', { class: 'track' },
+            el('div', { class: 'fill', style: `--c:${t.color}; width:${pct}%` })),
+          el('span', { class: 'muted', text: `${t.count} (${pct}%)` }),
+        ),
+      );
+    }
+  }
+
+  function setBusy(value) {
+    busy = value;
+    for (const id of ['one', 'many', 'canary', 'reset']) $(id).disabled = value;
+  }
+
+  async function run(count, options) {
+    if (busy) return;
+    setBusy(true);
+    try {
+      for (let i = 1; i <= count; i++) {
+        record(await ask(options));
+        renderBars();
+        $('status').textContent = `${i} of ${count} sent…`;
+        await sleep(40);
+      }
+      $('status').textContent = `${count} sent. Distinct pods that answered so far: ${pods.size}.`;
+    } catch (err) {
+      $('status').textContent = `Request failed (${err.message}). Is the port-forward still running?`;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  $('one').addEventListener('click', () => run(1));
+  $('many').addEventListener('click', () => run(50));
+  $('canary').addEventListener('click', () => run(50, { canary: true }));
+  $('reset').addEventListener('click', () => {
+    tallies.clear();
+    pods.clear();
+    renderBars();
+    $('status').textContent = '';
+  });
+
+  // First load: show what answered this page (not counted in the tally).
+  ask().then((result) => showDetails(result)).catch((err) => {
+    $('status').textContent = `Could not reach the app (${err.message}).`;
+  });
+</script>
+</body>
+</html>

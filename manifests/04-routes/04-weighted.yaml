@@ -1,0 +1,47 @@
+# STEP 4 - Weighted traffic splitting.
+# Replaces the "shop" route again. The canary header rule stays.
+# The default rule now splits traffic 80/20 between the two Services.
+# Weights are per backendRef (per Service), not per pod.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: shop
+spec:
+  parentRefs:
+    - name: lab-gateway
+  hostnames:
+    - shop.localhost
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+          headers:
+            - name: x-canary
+              value: "true"
+      filters:
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            set:
+              - name: x-lab-route
+                value: canary
+      backendRefs:
+        - name: shop-v2
+          port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      filters:
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            set:
+              - name: x-lab-route
+                value: weighted
+      backendRefs:
+        - name: shop-v1
+          port: 80
+          weight: 80
+        - name: shop-v2
+          port: 80
+          weight: 20
